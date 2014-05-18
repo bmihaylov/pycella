@@ -14,8 +14,8 @@ Support for creation, running and visualization of cellular automata.
   and for loading/saving files with initial state as well as an easy method
   to create an initial state.  
 
-**Running and visualization. Running we be possible in two modes.**
-- By directly using the API of the backend in your own code.
+**Running and visualization. Possible in two modes.**
+- By directly using the API of the backend in your own code and doing your own visualization.
 - By using the GUI which will provide means to conveniently explore the
   evolution of a cellular automaton like:  
     1. Playing the evolution at a convenient and changeable speed  
