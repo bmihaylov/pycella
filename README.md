@@ -1,5 +1,6 @@
 **Goals for the finished project:**  
 Support for creation, running and visualization of cellular automata.  
+
 **Creation**  
 - Rules are specified through a python function, operating on a proxy
     object, which will provide all the necessary access plus some
