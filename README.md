@@ -24,7 +24,7 @@ Support for creation, running and visualization of cellular automata.
     4. Going back a step  
     5. Zooming in and out  
 
-**Goals for the second milestone:**
+**Goals for the second milestone:**  
 Build the backend:
 * Construction of an automaton from rules and a buffer with the initial state
 * Rule applying logic
