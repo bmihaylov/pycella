@@ -14,7 +14,7 @@ Support for creation, running and visualization of cellular automata.
   and for loading/saving files with initial state as well as an easy method
   to create an initial state.  
 
-**Running and visualization. Possible in two modes.**
+**Running and visualization. Possible in two modes:**
 - By directly using the API of the backend in your own code and doing your own visualization.
 - By using the GUI which will provide means to conveniently explore the
   evolution of a cellular automaton like:  
@@ -23,3 +23,10 @@ Support for creation, running and visualization of cellular automata.
     3. Running through the evolution step by step  
     4. Going back a step  
     5. Zooming in and out  
+
+**Goals for the second milestone:**
+Build the backend:
+* Construction of an automaton from rules and a buffer with the initial state
+* Rule applying logic
+* Proxy class for the rules_function
+* Tests for the backend
