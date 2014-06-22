@@ -25,7 +25,6 @@ class CaGui(QtGui.QMainWindow):
     def init_toolbar_and_menu(self):
         self._toolbar = self.addToolBar('Actions')
 
-
         step_action = QtGui.QAction(QtGui.QIcon('Step.png'),
                                     '&Step', self)
         step_action.setShortcut('Return')
@@ -73,7 +72,6 @@ class CaGui(QtGui.QMainWindow):
         control_menu.addAction(speed_down_action)
         control_menu.addAction(speed_up_action)
 
-
     def step(self):
         self._grid.step()
 
@@ -120,34 +118,37 @@ class CaGui(QtGui.QMainWindow):
 
     def closeEvent(self, event):
         message_box = QtGui.QMessageBox(self)
+        message_box.setFocus()
         reply = message_box.question(self, 'Closing',
-            "Are you sure to quit?", QtGui.QMessageBox.Yes | 
-            QtGui.QMessageBox.No, QtGui.QMessageBox.No)
-
+                                     "Are you sure to quit?",
+                                     QtGui.QMessageBox.Yes |
+                                     QtGui.QMessageBox.No,
+                                     QtGui.QMessageBox.No)
         if reply == QtGui.QMessageBox.Yes:
             event.accept()
         else:
-            event.ignore()   
+            event.ignore()
     FACTOR = 1.5
+
 
 class Grid(QtGui.QFrame):
 
     def __init__(self, window):
         super(Grid, self).__init__()
         self._window = window
-        self._horizontal_count = 15
-        self._vertical_count = 10
+        self._horizontal_count = 25
+        self._vertical_count = 15
         self._color = QtCore.Qt.darkGray
         while True:
             try:
                 self.create_automaton()
             except Exception as e:
-                message_box = QtGui.QMessageBox(self)
-                reply = message_box.question(self, "Error in rules file:"\
-                        + str(e),
-                        "Would you like to try with another file?",
-                        QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
-                        QtGui.QMessageBox.Yes)
+                m_box = QtGui.QMessageBox(self)
+                reply = m_box.question(self, "Error in rules file: " + str(e),
+                                       "Would you like to try another file?",
+                                       QtGui.QMessageBox.Yes |
+                                       QtGui.QMessageBox.No,
+                                       QtGui.QMessageBox.Yes)
                 if reply == QtGui.QMessageBox.No:
                     self._window.close()
                     sys.exit()
@@ -159,7 +160,9 @@ class Grid(QtGui.QFrame):
         self.MIN_BOX_WIDTH = 20
 
     def create_automaton(self):
-        rules_path = QtGui.QFileDialog.getOpenFileName(self, "Open rules file")
+        dialog = QtGui.QFileDialog(self)
+        dialog.setFocus()
+        rules_path = dialog.getOpenFileName(self, "Open rules file")
         rules_name = rules_path.split(r'/')[-1]
         loader = importlib.machinery.SourceFileLoader(rules_name, rules_path)
         module = loader.load_module()
@@ -171,11 +174,16 @@ class Grid(QtGui.QFrame):
         else:
             self._rules_name = ''
         if hasattr(module, 'alive_color'):
-            color = module.alive_color 
+            color = module.alive_color
             if re.match(r'(?:[0-9a-f]{2}\s){2}[0-9a-f]{2}', color.lower()):
-                self._color = QtGui.QColor(*(int(i, 16) for i in color.split()))
+                self._color = QtGui.QColor(*(int(i, 16)
+                                           for i in color.split()))
+        if hasattr(module, 'horizontal_count'):
+            self._horizontal_count = module.horizontal_count
+        if hasattr(module, 'vertical_count'):
+            self._vertical_count = module.vertical_count
         rules = module.rules
-            
+
         initial_buff = [[self._empty_cell()
                         for _ in range(self._horizontal_count)]
                         for i in range(self._vertical_count)]
@@ -199,7 +207,7 @@ class Grid(QtGui.QFrame):
         painter.end()
         self._window.statusBar().clearMessage()
         generation = self._automaton.generation
-        self._window.statusBar().showMessage("generation={} {}"\
+        self._window.statusBar().showMessage("generation={} {}"
                                 .format(generation, self._rules_name))
 
     def draw_grid(self, painter):
