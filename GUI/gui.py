@@ -9,12 +9,12 @@ class CaGui(QtGui.QMainWindow):
     def __init__(self):
         super(CaGui, self).__init__()
 
-        self.init_toolbar()
+        self.init_toolbar_and_menu()
         self._grid = Grid(self)
+        self.setCentralWidget(self._grid)
         self._timer = QtCore.QBasicTimer()
         self._interval = 1000
 
-        self.setCentralWidget(self._grid)
         self.statusBar()
         self.setWindowTitle('Pycella')
         self.setGeometry(50, 200, 900, 900)
@@ -22,7 +22,7 @@ class CaGui(QtGui.QMainWindow):
         self.showMaximized()
         #self.show()
 
-    def init_toolbar(self):
+    def init_toolbar_and_menu(self):
         self._toolbar = self.addToolBar('Actions')
 
 
@@ -95,6 +95,10 @@ class CaGui(QtGui.QMainWindow):
         self._grid = Grid(self)
         while self._grid._automaton is None:
             self._grid = Grid(self)
+        self.setCentralWidget(self._grid)
+        print('repainting')
+        self.repaint()
+        print('repainted')
 
     def speed_up(self):
         if not self._timer.isActive():
