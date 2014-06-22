@@ -1,6 +1,6 @@
 from collections import deque
 from itertools import chain
-from math import sqrt
+from math import sqrt, ceil
 import sys
 
 
@@ -13,20 +13,35 @@ class CA:
         middle_rows = [[empty_cell()] + row + [empty_cell()] for row in buff]
         last_row = list(empty_cell() for _ in range(self._width))
         self._buffer = [first_row] + middle_rows + [last_row]
+        self._expand_callback = None
 
         self._rules = rules
         self._empty_cell = empty_cell
         self._bounded = bounded
-        self._generation = 0
+        self.generation = 0
         self._proxy = CA.Proxy(self)
 
     def __getitem__(self, coords):
         return self._buffer[coords[0]][coords[1]]
 
+    def __setitem__(self, coords, cell):
+        try:
+            self._buffer[coords[0]][coords[1]] = cell
+        except IndexError:
+            print("index error (w, h) = ({}, {}), attempted ({}, {})".format(
+                self.width, self.height, coords[0], coords[1]))
+
     def __iter__(self):
         for i in range(1, self._height-1):
             for j in range(1, self._width-1):
                 yield self._buffer[i][j]
+
+    def __eq__(self, other):
+        """
+        Check if two automata are exactly equal. Doesn't do trimming
+        of empty cells
+        """
+        return all(mine == other for mine, other in zip(self, other))
 
     @property
     def width(self):
@@ -46,6 +61,10 @@ class CA:
         """
         :returns: True iff there is a a non empty cell at any of the boundaries
         """
+        check = self._expand_callback
+        if check is not None and not check():
+            return
+
         buff = self._buffer
         for i in range(1, self._width-1):
             if buff[1][i] != self._empty_cell():
@@ -62,17 +81,17 @@ class CA:
     def _expand(self, factor=2):
         """
         Create a roughly two times larger buffer and
-        copy and current buffer in the center of the new one
+        copy the current buffer in the center of the new one
         """
         factor = sqrt(factor)
         width = self._width - 2
         height = self._height - 2
-        new_width = int(width*factor + 2)
-        new_height = int(height*factor + 2)
+        new_width = int(ceil(width*factor + 2))
+        new_height = int(ceil(height*factor + 2))
         new_buffer = [[self._empty_cell() for i in range(new_width)]
                       for j in range(new_height)]
-        h_margin = int((new_height - height) / 2)
-        w_margin = int((new_width - width) / 2)
+        h_margin = int(ceil((new_height - height) / 2))
+        w_margin = int(ceil((new_width - width) / 2))
         for i in range(height):
             for j in range(width):
                 new_buffer[h_margin+i][w_margin+j] = self._buffer[1+i][1+j]
@@ -91,7 +110,7 @@ class CA:
         width = self._width
         height = self._height
         update_buffer = deque()
-        self._generation += 1
+        self.generation += 1
 
         #get a head start with the first two rows
         #the proxy starts from (1, 1)
@@ -115,11 +134,21 @@ class CA:
     def _apply_rules(self, proxy):
         """
         :returns: a new cell that is the result of applying
-            the rules to the cell pointed to by the proxy at 
+            the rules to the cell pointed to by the proxy at
             that moment
         """
-        
         return self._rules(proxy)
+
+    def __str__(self):
+        result = ''
+        i = 0
+        for cell in self:
+            result += '*' if cell else ' '
+            i += 1
+            if i == self.width:
+                i = 0
+                result += '\n'
+        return result
 
     class Proxy:
         """
@@ -162,5 +191,5 @@ class CA:
             j = self._j
             ca = self._ca
             return [ca[i-1, j-1], ca[i-1, j], ca[i-1, j+1],
-                    ca[i, j-1], ca[i, j+1],
+                    ca[i,   j-1],             ca[i,   j+1],
                     ca[i+1, j-1], ca[i+1, j], ca[i+1, j+1]]
