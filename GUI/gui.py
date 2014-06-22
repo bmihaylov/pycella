@@ -5,59 +5,113 @@ from pycella.automaton.automaton import CA
 
 # TODO
 # default colors from conf_file
-# default starting counts
-# default line width
+# name of the rules from conf_file
 
 class CaGui(QtGui.QMainWindow):
-
     def __init__(self, rules_path):
         super(CaGui, self).__init__()
 
         self._rules_path = rules_path
         self.init_toolbar()
         self._grid = Grid(self)
-        self._playing = False
+        self._timer = QtCore.QBasicTimer()
+        self._interval = 1000
 
         self.setCentralWidget(self._grid)
         self.statusBar()
-
         self.setWindowTitle('Pycella')
         self.setGeometry(50, 200, 900, 900)
-        #self.showMaximized()
-        self.show()
+        #TODO choose show method
+        self.showMaximized()
+        #self.show()
 
     def init_toolbar(self):
         self._toolbar = self.addToolBar('Actions')
 
 
-        # TODO set shortcuts
-        step_action = QtGui.QAction(QtGui.QIcon('Step.png'), 'Step', self)
+        step_action = QtGui.QAction(QtGui.QIcon('Step.png'),
+                                    '&Step', self)
+        step_action.setShortcut('Enter')
         step_action.triggered.connect(self.step)
         self._toolbar.addAction(step_action)
 
-        play_action = QtGui.QAction(QtGui.QIcon('Play.png'), 'Play', self)
+        play_action = QtGui.QAction(QtGui.QIcon('Play.png'),
+                                    '&Play', self)
         play_action.triggered.connect(self.play)
         self._toolbar.addAction(play_action)
 
-        pause_action = QtGui.QAction(QtGui.QIcon('Pause.png'), 'Pause', self)
+        pause_action = QtGui.QAction(QtGui.QIcon('Pause.png'),
+                                     '&Pause', self)
         pause_action.triggered.connect(self.pause)
         self._toolbar.addAction(pause_action)
 
-        reset_action = QtGui.QAction(QtGui.QIcon('Reset.png'), 'Reset', self)
+        toggle_action = QtGui.QAction('&Toggle Play/Pause', self)
+        toggle_action.setShortcut('Space')
+        toggle_action.triggered.connect(self.toggle)
+
+        reset_action = QtGui.QAction(QtGui.QIcon('Reset.png'),
+                                     '&Reset', self)
+        reset_action.setShortcut('Backspace')
         reset_action.triggered.connect(self.reset)
         self._toolbar.addAction(reset_action)
+
+        speed_down_action = QtGui.QAction(QtGui.QIcon('SpeedDown.png'),
+                                          '&Speed Down', self)
+        speed_down_action.setShortcut('Down')
+        speed_down_action.triggered.connect(self.speed_down)
+        self._toolbar.addAction(speed_down_action)
+
+        speed_up_action = QtGui.QAction(QtGui.QIcon('SpeedUp.png'),
+                                        '&Speed Up', self)
+        speed_up_action.setShortcut('Up')
+        speed_up_action.triggered.connect(self.speed_up)
+        self._toolbar.addAction(speed_up_action)
+
+        control_menu = self.menuBar().addMenu('&Control')
+        control_menu.addAction(step_action)
+        control_menu.addAction(play_action)
+        control_menu.addAction(pause_action)
+        control_menu.addAction(toggle_action)
+        control_menu.addAction(reset_action)
+        control_menu.addAction(speed_down_action)
+        control_menu.addAction(speed_up_action)
+
 
     def step(self):
         self._grid.step()
 
     def play(self):
-        pass
+        if not self._timer.isActive():
+            self._timer.start(self._interval, self)
 
     def pause(self):
-        pass
+        if self._timer.isActive():
+            self._timer.stop()
+
+    def toggle(self):
+        if self._timer.isActive():
+            self._timer.stop()
+        else:
+            self._timer.start(self._interval, self)
 
     def reset(self):
         pass
+
+    def speed_up(self):
+        if self._interval / CaGui.FACTOR > 1:
+            self._interval /= CaGui.FACTOR
+        self._timer.start(self._interval, self)
+
+    def speed_down(self):
+        self._interval *= CaGui.FACTOR
+        self._timer.start(self._interval, self)
+
+    def timerEvent(self, event):
+        if event.timerId() == self._timer.timerId():
+            self._grid._automaton.step()
+            self.repaint()
+
+    FACTOR = 1.5
 
 class Grid(QtGui.QFrame):
 
@@ -169,7 +223,7 @@ class Grid(QtGui.QFrame):
         return row + 1, col + 1
 
     def mouseReleaseEvent(self, event):
-        if self._window._playing:
+        if self._window._timer.isActive():
             return
         row, col = self.pix_to_row_col(event)
         if self._automaton[row, col]:
