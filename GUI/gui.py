@@ -1,17 +1,14 @@
 import sys
-from PyQt4 import QtGui, QtCore
 import importlib.machinery
+import re
+from PyQt4 import QtGui, QtCore
 from pycella.automaton.automaton import CA
 
-# TODO
-# default colors from conf_file
-# name of the rules from conf_file
 
 class CaGui(QtGui.QMainWindow):
-    def __init__(self, rules_path):
+    def __init__(self):
         super(CaGui, self).__init__()
 
-        self._rules_path = rules_path
         self.init_toolbar()
         self._grid = Grid(self)
         self._timer = QtCore.QBasicTimer()
@@ -31,7 +28,7 @@ class CaGui(QtGui.QMainWindow):
 
         step_action = QtGui.QAction(QtGui.QIcon('Step.png'),
                                     '&Step', self)
-        step_action.setShortcut('Enter')
+        step_action.setShortcut('Return')
         step_action.triggered.connect(self.step)
         self._toolbar.addAction(step_action)
 
@@ -95,14 +92,20 @@ class CaGui(QtGui.QMainWindow):
             self._timer.start(self._interval, self)
 
     def reset(self):
-        pass
+        self._grid = Grid(self)
+        while self._grid._automaton is None:
+            self._grid = Grid(self)
 
     def speed_up(self):
+        if not self._timer.isActive():
+            return
         if self._interval / CaGui.FACTOR > 1:
             self._interval /= CaGui.FACTOR
         self._timer.start(self._interval, self)
 
     def speed_down(self):
+        if not self._timer.isActive():
+            return
         self._interval *= CaGui.FACTOR
         self._timer.start(self._interval, self)
 
@@ -111,6 +114,15 @@ class CaGui(QtGui.QMainWindow):
             self._grid._automaton.step()
             self.repaint()
 
+    def closeEvent(self, event):
+        reply = QtGui.QMessageBox.question(self, 'Closing',
+            "Are you sure to quit?", QtGui.QMessageBox.Yes | 
+            QtGui.QMessageBox.No, QtGui.QMessageBox.No)
+
+        if reply == QtGui.QMessageBox.Yes:
+            event.accept()
+        else:
+            event.ignore()   
     FACTOR = 1.5
 
 class Grid(QtGui.QFrame):
@@ -121,25 +133,49 @@ class Grid(QtGui.QFrame):
         self._horizontal_count = 15
         self._vertical_count = 10
         self._color = QtCore.Qt.darkGray
-        self.create_automaton()
+        while True:
+            try:
+                self.create_automaton()
+            except Exception as e:
+                reply = QtGui.QMessageBox.question(self, "Error in rules file:"\
+                        + str(e),
+                        "Would you like to try with another file?",
+                        QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
+                        QtGui.QMessageBox.Yes)
+                if reply == QtGui.QMessageBox.No:
+                    self._window.close()
+                    sys.exit()
+                else:
+                    self._automaton = None
+            break
+
         self.MIN_BOX_HEIGHT = 20
         self.MIN_BOX_WIDTH = 20
 
     def create_automaton(self):
-        rules_path = self._window._rules_path
+        rules_path = QtGui.QFileDialog.getOpenFileName(self, "Open rules file")
         rules_name = rules_path.split(r'/')[-1]
         loader = importlib.machinery.SourceFileLoader(rules_name, rules_path)
         module = loader.load_module()
 
         self._empty_cell = module.empty_cell
+        self._default_cell = module.default_cell
+        if hasattr(module, 'rules_name'):
+            self._rules_name = module.rules_name
+        else:
+            self._rules_name = ''
+        if hasattr(module, 'alive_color'):
+            color = module.alive_color 
+            if re.match(r'(?:[0-9a-f]{2}\s){2}[0-9a-f]{2}', color.lower()):
+                self._color = QtGui.QColor(*(int(i, 16) for i in color.split()))
         rules = module.rules
+            
         initial_buff = [[self._empty_cell()
                         for _ in range(self._horizontal_count)]
                         for i in range(self._vertical_count)]
         self._automaton = CA(initial_buff, rules, self._empty_cell,
                              bounded=False)
         self._automaton._expand_callback = self._box_limit
-        self._default_cell = module.default_cell
 
     def _box_limit(self):
         rect = self.contentsRect()
@@ -157,10 +193,10 @@ class Grid(QtGui.QFrame):
         painter.end()
         self._window.statusBar().clearMessage()
         generation = self._automaton.generation
-        self._window.statusBar().showMessage("generation={}".format(generation))
+        self._window.statusBar().showMessage("generation={} {}"\
+                                .format(generation, self._rules_name))
 
     def draw_grid(self, painter):
-        # TODO get configured in file color
         pen = QtGui.QPen(QtCore.Qt.black, 1, QtCore.Qt.SolidLine)
         painter.setPen(pen)
 
@@ -173,8 +209,6 @@ class Grid(QtGui.QFrame):
         self._vertical_count = self._automaton.height
         box_width = rect.width() // self._horizontal_count
         box_height = rect.height() // self._vertical_count
-        # TODO remove
-        print(box_width, box_height)
         y = top
         right_max = self._horizontal_count * box_width
         for i in range(self._vertical_count+1):
@@ -188,25 +222,18 @@ class Grid(QtGui.QFrame):
             painter.drawLine(x, top, x, bottom_max)
             x += box_width
 
-        # TODO get configured in file color
-        pen = QtGui.QPen(QtCore.Qt.darkGray, 1, QtCore.Qt.SolidLine)
+        pen = QtGui.QPen(self._color, 1, QtCore.Qt.SolidLine)
         painter.setPen(pen)
         #fill living cells
         coordinates = ((i, j) for i in range(self._vertical_count)
                        for j in range(self._horizontal_count))
         for cell in self._automaton:
             y, x = next(coordinates)
-            # TODO remove
-            #print('({}, {})'.format(x, y), end=' ')
             # starting from inside the box
             x = x * box_width + 1
             y = y * box_height + 1
-            # TODO remove
-            # print(x, y)
             if cell:
                 painter.fillRect(x, y, box_width-1, box_height-1, self._color)
-        # TODO remove
-        #print(self._automaton)
 
     def pix_to_row_col(self, event):
         rect = self.contentsRect()
@@ -217,8 +244,6 @@ class Grid(QtGui.QFrame):
         # this is to account for the border width
         col = (event.x() - col) // box_width
         row = (event.y() - row) // box_height
-        # TODO remove
-        #print("row={}, col={}".format(row, col))
         # accounting that the automaton indices start from 1
         return row + 1, col + 1
 
@@ -238,5 +263,5 @@ class Grid(QtGui.QFrame):
 
 if __name__ == '__main__':
     app = QtGui.QApplication([])
-    ca_gui = CaGui('/home/bozhidar/schoolcode/Python/pycella/GUI/rules.py')
+    ca_gui = CaGui()
     sys.exit(app.exec_())

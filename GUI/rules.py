@@ -19,3 +19,6 @@ def empty_cell():
 
 def default_cell():
     return 1
+
+rules_name = "Game of Life"
+alive_color = "00 ee 99"
