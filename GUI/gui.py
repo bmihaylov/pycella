@@ -115,7 +115,8 @@ class CaGui(QtGui.QMainWindow):
             self.repaint()
 
     def closeEvent(self, event):
-        reply = QtGui.QMessageBox.question(self, 'Closing',
+        message_box = QtGui.QMessageBox(self)
+        reply = message_box.question(self, 'Closing',
             "Are you sure to quit?", QtGui.QMessageBox.Yes | 
             QtGui.QMessageBox.No, QtGui.QMessageBox.No)
 
@@ -137,7 +138,8 @@ class Grid(QtGui.QFrame):
             try:
                 self.create_automaton()
             except Exception as e:
-                reply = QtGui.QMessageBox.question(self, "Error in rules file:"\
+                message_box = QtGui.QMessageBox(self)
+                reply = message_box.question(self, "Error in rules file:"\
                         + str(e),
                         "Would you like to try with another file?",
                         QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
